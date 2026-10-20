@@ -32,17 +32,10 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh """
-                        # Log in to Docker Hub via CLI
                         echo "\$DOCKER_PASS" | docker login -u "\$DOCKER_USER" --password-stdin
-
-                        # Build image tagged with BUILD_NUMBER and latest
                         docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} -t ${DOCKER_IMAGE}:latest .
-
-                        # Push both tags to Docker Hub
                         docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}
                         docker push ${DOCKER_IMAGE}:latest
-
-                        # Clean up authentication credentials session
                         docker logout
                     """
                 }
@@ -52,7 +45,7 @@ pipeline {
         stage('Update GitOps Repo') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'github-access-token', usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
-                    sh """
+                    sh '''
                         rm -rf config-repo
                         git clone https://${GH_TOKEN}@${GITHUB_CONFIG_REPO} config-repo
                         cd config-repo
@@ -64,8 +57,11 @@ pipeline {
                         
                         git add deployment.yaml
                         git diff-index --quiet HEAD || git commit -m "Update image to version ${BUILD_NUMBER}"
+                        
+                        # Set origin remote URL explicitly with token for authenticated push
+                        git remote set-url origin https://${GH_TOKEN}@${GITHUB_CONFIG_REPO}
                         git push origin main
-                    """
+                    '''
                 }
             }
         }
