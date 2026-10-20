@@ -7,7 +7,6 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = 'bus57790/devops-lab-app'
-        // Store only the domain/path without the scheme for clean token authentication
         GITHUB_CONFIG_REPO = 'github.com/bus57790/devops-gitops-config.git'
     }
 
@@ -31,12 +30,21 @@ pipeline {
 
         stage('Build & Push Docker Image') {
             steps {
-                script {
-                    docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-credentials') {
-                        def customImage = docker.build("${DOCKER_IMAGE}:${BUILD_NUMBER}")
-                        customImage.push()
-                        customImage.push('latest')
-                    }
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh """
+                        # Log in to Docker Hub via CLI
+                        echo "\$DOCKER_PASS" | docker login -u "\$DOCKER_USER" --password-stdin
+
+                        # Build image tagged with BUILD_NUMBER and latest
+                        docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} -t ${DOCKER_IMAGE}:latest .
+
+                        # Push both tags to Docker Hub
+                        docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}
+                        docker push ${DOCKER_IMAGE}:latest
+
+                        # Clean up authentication credentials session
+                        docker logout
+                    """
                 }
             }
         }
@@ -44,7 +52,6 @@ pipeline {
         stage('Update GitOps Repo') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'github-access-token', usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
-                    // Using double quotes (") allows Groovy to interpolate env variables
                     sh """
                         rm -rf config-repo
                         git clone https://${GH_TOKEN}@${GITHUB_CONFIG_REPO} config-repo
