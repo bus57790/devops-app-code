@@ -47,7 +47,7 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'github-access-token', usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
                     sh """
                         rm -rf config-repo
-                        git clone https://${GH_TOKEN}@${GITHUB_CONFIG_REPO} config-repo
+                        git clone https://x-access-token:${GH_TOKEN}@${GITHUB_CONFIG_REPO} config-repo
                         cd config-repo
                         
                         sed -i "s|image: .*|image: ${DOCKER_IMAGE}:${BUILD_NUMBER}|g" deployment.yaml
@@ -58,7 +58,7 @@ pipeline {
                         git add deployment.yaml
                         git diff-index --quiet HEAD || git commit -m "Update image to version ${BUILD_NUMBER}"
                         
-                        git push https://${GH_TOKEN}@${GITHUB_CONFIG_REPO} HEAD:main
+                        git push https://x-access-token:${GH_TOKEN}@${GITHUB_CONFIG_REPO} HEAD:main
                     """
                 }
             }
