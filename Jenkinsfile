@@ -45,7 +45,7 @@ pipeline {
         stage('Update GitOps Repo') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'github-access-token', usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
-                    sh '''
+                    sh """
                         rm -rf config-repo
                         git clone https://${GH_TOKEN}@${GITHUB_CONFIG_REPO} config-repo
                         cd config-repo
@@ -58,10 +58,8 @@ pipeline {
                         git add deployment.yaml
                         git diff-index --quiet HEAD || git commit -m "Update image to version ${BUILD_NUMBER}"
                         
-                        # Set origin remote URL explicitly with token for authenticated push
-                        git remote set-url origin https://${GH_TOKEN}@${GITHUB_CONFIG_REPO}
-                        git push origin main
-                    '''
+                        git push https://${GH_TOKEN}@${GITHUB_CONFIG_REPO} HEAD:main
+                    """
                 }
             }
         }
